@@ -30,17 +30,27 @@ npm install --save-dev express-journey-mapper
 ## Quick Start
 
 ```bash
-# Scan current directory and generate HTML documentation
-npx express-journey-mapper
+# Basic usage - scans current directory
+express-journey-mapper .
+
+# Or use the short alias
+journey-map .
 
 # Scan specific directory
-npx express-journey-mapper ./src
+express-journey-mapper ./src
 
-# Generate JSON output
-npx express-journey-mapper ./src --format json --output ./docs
+# Specify output location
+express-journey-mapper . --output ./docs
 
-# Verbose mode for debugging
-npx express-journey-mapper --verbose
+# Generate different formats
+express-journey-mapper . --format json
+express-journey-mapper . --format markdown
+
+# See what's happening (verbose mode)
+express-journey-mapper . --verbose
+
+# Silent mode (errors only)
+express-journey-mapper . --quiet
 ```
 
 ## Features
@@ -86,23 +96,109 @@ Groups related routes into logical user journeys:
 - README-ready format
 - Version control friendly
 
-## CLI Options
+## Command Reference
+
+### Basic Commands
+
+```bash
+# View help and all available options
+express-journey-mapper --help
+journey-map --help
+
+# Check installed version
+express-journey-mapper --version
+journey-map -V
+```
+
+### Usage Patterns
 
 ```bash
 express-journey-mapper [path] [options]
+journey-map [path] [options]
+```
 
-Arguments:
-  path                Project root path (default: ".")
+**Arguments:**
+- `path` - Project root directory to scan (default: current directory `.`)
 
-Options:
-  -o, --output <path>      Output directory (default: "./journey-map")
-  -c, --config <path>      Config file path
-  -f, --format <format>    Output format: html, json, markdown (default: "html")
-  --no-auto-detect         Disable automatic flow detection
-  -v, --verbose            Show detailed output
-  -q, --quiet              Suppress non-error output
-  -h, --help               Display help
-  -V, --version            Display version
+### All Options
+
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
+| `--output <path>` | `-o` | Output directory for generated files | `./journey-map` |
+| `--format <type>` | `-f` | Output format: `html`, `json`, or `markdown` | `html` |
+| `--config <path>` | `-c` | Path to configuration file | `journey-map.config.js` |
+| `--verbose` | `-v` | Show detailed debug information | `false` |
+| `--quiet` | `-q` | Suppress all output except errors | `false` |
+| `--help` | `-h` | Display help information | - |
+| `--version` | `-V` | Display version number | - |
+
+### Common Usage Examples
+
+```bash
+# 1. Generate HTML documentation (default)
+express-journey-mapper .
+# Output: ./journey-map/index.html
+
+# 2. Generate JSON data file
+express-journey-mapper . --format json
+# Output: ./journey-map/flows.json
+
+# 3. Generate Markdown documentation
+express-journey-mapper . --format markdown
+# Output: ./journey-map/flows.md
+
+# 4. Custom output directory
+express-journey-mapper . --output ./docs/api-flows
+# Output: ./docs/api-flows/index.html
+
+# 5. Scan specific directory
+express-journey-mapper ./src/routes --output ./docs
+# Scans: ./src/routes/**/*.{js,ts}
+
+# 6. Debug mode (see what's being analyzed)
+express-journey-mapper . --verbose
+# Shows: File paths, route detection, handler analysis details
+
+# 7. Silent mode (CI/CD friendly)
+express-journey-mapper . --quiet
+# Shows: Nothing (unless error occurs)
+
+# 8. Combine multiple options
+express-journey-mapper ./src --output ./docs/flows --format json --verbose
+```
+
+### Using with NPX (No Installation)
+
+```bash
+# Run directly without installing
+npx express-journey-mapper .
+
+# Specify version
+npx express-journey-mapper@latest . --format html
+```
+
+### Global vs Local Installation
+
+**Global (recommended for CLI usage):**
+```bash
+npm install -g express-journey-mapper
+express-journey-mapper .
+```
+
+**Local (for project-specific version):**
+```bash
+npm install --save-dev express-journey-mapper
+npx express-journey-mapper .
+```
+
+### Update to Latest Version
+
+```bash
+# If installed globally
+npm update -g express-journey-mapper
+
+# If installed locally
+npm update express-journey-mapper
 ```
 
 ## Configuration

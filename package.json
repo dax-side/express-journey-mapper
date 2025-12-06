@@ -12,6 +12,14 @@
   ],
   "author": "Damola",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dax-side/express-journey-mapper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dax-side/express-journey-mapper/issues"
+  },
+  "homepage": "https://github.com/dax-side/express-journey-mapper#readme",
   "bin": {
     "express-journey-mapper": "./dist/cli.js",
     "journey-map": "./dist/cli.js"

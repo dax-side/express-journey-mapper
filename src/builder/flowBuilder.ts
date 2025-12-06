@@ -1,11 +1,54 @@
 import { Route, HandlerAnalysis, Flow, FlowStep, FlowConfig } from '../types';
 
+/**
+ * Builds user flows from routes and handler analyses
+ * Uses config if provided and valid, otherwise auto-detects flows
+ */
 export function buildFlows(routes: Route[], analyses: HandlerAnalysis[], config?: FlowConfig): Flow[] {
-  if (config) {
+  // Validate config before using
+  if (config && isValidFlowConfig(config)) {
     return buildFlowsFromConfig(routes, analyses, config);
   }
 
   return autoDetectFlows(routes, analyses);
+}
+
+/**
+ * Validates that a config object has the required structure
+ */
+function isValidFlowConfig(config: unknown): config is FlowConfig {
+  if (!config || typeof config !== 'object') {
+    return false;
+  }
+  
+  const cfg = config as Record<string, unknown>;
+  
+  // flows property must exist and be an object
+  if (!cfg.flows || typeof cfg.flows !== 'object' || cfg.flows === null) {
+    return false;
+  }
+  
+  // Each flow must have required properties
+  for (const [flowId, flowConfig] of Object.entries(cfg.flows as Record<string, unknown>)) {
+    if (!flowConfig || typeof flowConfig !== 'object') {
+      console.warn(`Warning: Invalid flow config for '${flowId}', skipping`);
+      return false;
+    }
+    
+    const fc = flowConfig as Record<string, unknown>;
+    
+    if (typeof fc.title !== 'string') {
+      console.warn(`Warning: Flow '${flowId}' missing required 'title' property`);
+      return false;
+    }
+    
+    if (!Array.isArray(fc.steps)) {
+      console.warn(`Warning: Flow '${flowId}' missing required 'steps' array`);
+      return false;
+    }
+  }
+  
+  return true;
 }
 
 function autoDetectFlows(routes: Route[], analyses: HandlerAnalysis[]): Flow[] {
@@ -85,12 +128,31 @@ function buildFlowsFromConfig(
 ): Flow[] {
   const flows: Flow[] = [];
 
+  // Safety check: ensure config.flows exists and is iterable
+  if (!config.flows || typeof config.flows !== 'object') {
+    console.warn('Warning: config.flows is not defined, falling back to auto-detection');
+    return autoDetectFlows(routes, analyses);
+  }
+
   for (const [flowId, flowConfig] of Object.entries(config.flows)) {
+    // Skip invalid flow configs
+    if (!flowConfig || !Array.isArray(flowConfig.steps)) {
+      console.warn(`Warning: Skipping invalid flow config '${flowId}'`);
+      continue;
+    }
+
     const steps: FlowStep[] = [];
 
     for (const stepConfig of flowConfig.steps) {
+      if (!stepConfig || !stepConfig.endpoint) {
+        continue;
+      }
+
       const analysis = analyses.find(a => a.endpoint === stepConfig.endpoint);
-      if (!analysis) continue;
+      if (!analysis) {
+        console.warn(`Warning: No analysis found for endpoint '${stepConfig.endpoint}' in flow '${flowId}'`);
+        continue;
+      }
 
       // Merge config with analysis
       const step = createFlowStep(analysis, steps.length + 1);

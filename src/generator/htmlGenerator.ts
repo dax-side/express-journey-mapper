@@ -13,8 +13,9 @@ interface HtmlGeneratorOptions {
 }
 
 export async function generateHtml(options: HtmlGeneratorOptions): Promise<void> {
-  // 1. Read template HTML
-  const templatePath = path.resolve(process.cwd(), 'templates/viewer.html');
+  // 1. Read template HTML from package directory
+  // __dirname points to dist/generator, so go up two levels to reach templates/
+  const templatePath = path.resolve(__dirname, '../../templates/viewer.html');
   const template = await fs.readFile(templatePath, 'utf-8');
 
   // 2. Embed flow data as JSON

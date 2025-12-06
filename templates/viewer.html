@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Journey Map</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 300px;
+      background: white;
+      border-right: 1px solid #e2e8f0;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .sidebar h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1e293b;
+    }
+
+    .flow-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .flow-item:hover {
+      background: #f1f5f9;
+    }
+
+    .flow-item.active {
+      background: #dbeafe;
+      border: 1px solid #bfdbfe;
+    }
+
+    .flow-icon {
+      font-size: 16px;
+      margin-right: 8px;
+    }
+
+    .flow-title {
+      font-weight: 500;
+    }
+
+    .flow-steps {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .main {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .flow-header {
+      margin-bottom: 30px;
+    }
+
+    .flow-title-large {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+    }
+
+    .flow-description {
+      color: #64748b;
+      font-size: 16px;
+    }
+
+    .step {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .step::before {
+      content: '';
+      position: absolute;
+      left: -15px;
+      top: 20px;
+      width: 0;
+      height: 0;
+      border-top: 8px solid transparent;
+      border-bottom: 8px solid transparent;
+      border-right: 8px solid white;
+    }
+
+    .step::after {
+      content: '';
+      position: absolute;
+      left: -14px;
+      top: 20px;
+      width: 0;
+      height: 0;
+      border-top: 8px solid transparent;
+      border-bottom: 8px solid transparent;
+      border-right: 8px solid #e2e8f0;
+      z-index: -1;
+    }
+
+    .step-number {
+      position: absolute;
+      left: -40px;
+      top: 20px;
+      width: 24px;
+      height: 24px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .step-header {
+      margin-bottom: 16px;
+    }
+
+    .step-endpoint {
+      font-family: 'Monaco', 'Menlo', monospace;
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+
+    .step-description {
+      color: #475569;
+      margin-bottom: 16px;
+    }
+
+    .step-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+
+    .data-section {
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .data-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .data-content {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      background: white;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .outcomes {
+      margin-top: 16px;
+    }
+
+    .outcome {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+    }
+
+    .outcome.error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+    }
+
+    .outcome-icon {
+      margin-right: 8px;
+      font-size: 14px;
+    }
+
+    .outcome-text {
+      flex: 1;
+      font-size: 14px;
+    }
+
+    .outcome-next {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .no-flows {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <h1>API Journey Map</h1>
+      <div id="flow-list"></div>
+    </div>
+    <div class="main">
+      <div id="flow-content"></div>
+    </div>
+  </div>
+
+  <!-- DATA_PLACEHOLDER -->
+
+  <script>
+    let currentFlowId = null;
+
+    function init() {
+      const data = window.__JOURNEY_MAP_DATA__;
+      if (!data || data.length === 0) {
+        showNoFlows();
+        return;
+      }
+
+      renderFlowList(data);
+      showFlow(data[0].id);
+    }
+
+    function renderFlowList(flows) {
+      const list = document.getElementById('flow-list');
+      list.innerHTML = flows.map(flow => `
+        <div class="flow-item ${flow.id === currentFlowId ? 'active' : ''}" onclick="showFlow('${flow.id}')">
+          <div class="flow-title">
+            ${flow.icon ? `<span class="flow-icon">${flow.icon}</span>` : ''}
+            ${flow.title}
+          </div>
+          <div class="flow-steps">${flow.steps.length} steps</div>
+        </div>
+      `).join('');
+    }
+
+    function showFlow(flowId) {
+      const data = window.__JOURNEY_MAP_DATA__;
+      const flow = data.find(f => f.id === flowId);
+      if (!flow) return;
+
+      currentFlowId = flowId;
+
+      // Update active state
+      document.querySelectorAll('.flow-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      document.querySelector(`[onclick="showFlow('${flowId}')"]`).classList.add('active');
+
+      // Render flow content
+      const content = document.getElementById('flow-content');
+      content.innerHTML = `
+        <div class="flow-header">
+          <h1 class="flow-title-large">
+            ${flow.icon ? `<span class="flow-icon">${flow.icon}</span>` : ''}
+            ${flow.title}
+          </h1>
+          <p class="flow-description">${flow.description}</p>
+        </div>
+        ${flow.steps.map(step => `
+          <div class="step">
+            <div class="step-number">${step.step}</div>
+            <div class="step-header">
+              <div class="step-endpoint">${step.endpoint}</div>
+              <div class="step-description">${step.description}</div>
+            </div>
+            <div class="step-details">
+              <div class="data-section">
+                <div class="data-label">Request Data</div>
+                <div class="data-content">${step.dataIn}</div>
+              </div>
+              <div class="data-section">
+                <div class="data-label">Response Data</div>
+                <div class="data-content">${step.dataOut}</div>
+              </div>
+            </div>
+            <div class="outcomes">
+              ${step.outcomes.map(outcome => `
+                <div class="outcome ${outcome.type}">
+                  <span class="outcome-icon">${outcome.type === 'success' ? '✓' : '✗'}</span>
+                  <span class="outcome-text">${outcome.description}</span>
+                  <span class="outcome-next">→ ${outcome.next}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    function showNoFlows() {
+      document.getElementById('flow-content').innerHTML = `
+        <div class="no-flows">
+          <h2>No flows found</h2>
+          <p>Make sure your Express app has route definitions that can be analyzed.</p>
+        </div>
+      `;
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>

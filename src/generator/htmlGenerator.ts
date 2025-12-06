@@ -3,8 +3,30 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { Flow } from '../types';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+/**
+ * Finds the package root by looking for package.json
+ * Works in both development and installed contexts
+ */
+function findPackageRoot(): string {
+  const __filename = fileURLToPath(import.meta.url);
+  let currentDir = path.dirname(__filename);
+  
+  // Search up the directory tree for package.json
+  while (currentDir !== path.dirname(currentDir)) {
+    try {
+      const packageJsonPath = path.join(currentDir, 'package.json');
+      if (require('fs').existsSync(packageJsonPath)) {
+        return currentDir;
+      }
+    } catch (error) {
+      // Continue searching
+    }
+    currentDir = path.dirname(currentDir);
+  }
+  
+  // Fallback: assume we're in dist/generator
+  return path.resolve(path.dirname(__filename), '../..');
+}
 
 interface HtmlGeneratorOptions {
   flows: Flow[];
@@ -14,8 +36,8 @@ interface HtmlGeneratorOptions {
 
 export async function generateHtml(options: HtmlGeneratorOptions): Promise<void> {
   // 1. Read template HTML from package directory
-  // __dirname points to dist/generator, so go up two levels to reach templates/
-  const templatePath = path.resolve(__dirname, '../../templates/viewer.html');
+  const packageRoot = findPackageRoot();
+  const templatePath = path.join(packageRoot, 'templates', 'viewer.html');
   const template = await fs.readFile(templatePath, 'utf-8');
 
   // 2. Embed flow data as JSON

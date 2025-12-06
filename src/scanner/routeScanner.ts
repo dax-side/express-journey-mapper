@@ -12,9 +12,15 @@ const sourceFileCache = new Map<string, SourceFile>();
 /** Shared project instance for efficiency */
 let sharedProject: Project | null = null;
 
+/** HTTP methods supported by Express */
+const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'all'];
+
+/** Tracks processed chained route calls to avoid duplicates */
+const processedChainedCalls = new Set<number>();
+
 /**
  * Scans files for Express routes including modular router patterns
- * Handles: app.get(), router.post(), app.use('/path', router), etc.
+ * Handles: app.get(), router.post(), app.use('/path', router), router.route('/path').get().post(), etc.
  */
 export function scanRoutes(files: string[]): Route[] {
   const routes: Route[] = [];
@@ -22,6 +28,7 @@ export function scanRoutes(files: string[]): Route[] {
   // Reset state for new scan
   visitedFiles.clear();
   sourceFileCache.clear();
+  processedChainedCalls.clear();
   sharedProject = new Project({ skipFileDependencyResolution: true });
 
   for (const file of files) {
@@ -57,6 +64,14 @@ function scanFile(filePath: string, mountPath: string): Route[] {
   const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
 
   for (const call of callExpressions) {
+    // Check for chained route pattern: router.route('/path').get().post()
+    // Must check this first to avoid partial matching by direct route detection
+    const chainedRoutes = extractChainedRoutes(call, mountPath);
+    if (chainedRoutes.length > 0) {
+      routes.push(...chainedRoutes);
+      continue;
+    }
+
     // Check for direct route definitions: app.get(), router.post(), etc.
     const directRoute = extractDirectRoute(call, mountPath);
     if (directRoute) {
@@ -143,6 +158,202 @@ function extractDirectRoute(call: CallExpression, mountPath: string): Route | nu
       file: sourceFile.getFilePath(),
       line: call.getStartLineNumber()
     }
+  };
+}
+
+/**
+ * Extracts routes from router.route('/path').get().post().put() chained pattern
+ * 
+ * AST Structure for router.route('/users').get(handler1).post(handler2):
+ * 
+ * CallExpression (.post(handler2))
+ *   └─ Expression: MemberExpression
+ *        └─ Object: CallExpression (.get(handler1))
+ *             └─ Expression: MemberExpression  
+ *                  └─ Object: CallExpression (router.route('/users'))
+ *                       └─ Expression: router.route
+ *                       └─ Arguments: ['/users']
+ *                  └─ Name: get
+ *             └─ Arguments: [handler1]
+ *        └─ Name: post
+ *   └─ Arguments: [handler2]
+ * 
+ * We need to:
+ * 1. Find the root router.route('/path') call
+ * 2. Walk up the chain collecting each HTTP method call
+ * 3. Create a Route for each method with the same base path
+ */
+function extractChainedRoutes(call: CallExpression, mountPath: string): Route[] {
+  const routes: Route[] = [];
+  
+  // Use position to track already-processed chain roots
+  const callPos = call.getPos();
+  if (processedChainedCalls.has(callPos)) {
+    return [];
+  }
+
+  // Find the root router.route() call by walking down the chain
+  const chainInfo = findRouteChainRoot(call);
+  if (!chainInfo) return [];
+
+  const { rootCall, routePath, chainedMethods } = chainInfo;
+  
+  // Mark all calls in this chain as processed to avoid duplicates
+  const rootPos = rootCall.getPos();
+  processedChainedCalls.add(rootPos);
+
+  const fullBasePath = combinePaths(mountPath, routePath);
+  const sourceFile = call.getSourceFile();
+
+  // Create a route for each chained method
+  for (const methodInfo of chainedMethods) {
+    const route: Route = {
+      method: methodInfo.method.toUpperCase() as Route['method'],
+      path: fullBasePath,
+      handlerName: methodInfo.handler,
+      handlerFile: sourceFile.getFilePath(),
+      middleware: methodInfo.middleware,
+      sourceLocation: {
+        file: sourceFile.getFilePath(),
+        line: methodInfo.line
+      }
+    };
+    routes.push(route);
+  }
+
+  return routes;
+}
+
+/**
+ * Information about a chained method call (.get, .post, etc.)
+ */
+interface ChainedMethodInfo {
+  method: string;
+  handler: string;
+  middleware: string[];
+  line: number;
+}
+
+/**
+ * Result of finding the chain root
+ */
+interface ChainRootInfo {
+  rootCall: CallExpression;
+  routePath: string;
+  chainedMethods: ChainedMethodInfo[];
+}
+
+/**
+ * Walks up the AST to find router.route('/path') and collects all chained methods
+ * 
+ * For: router.route('/users').get(getUsers).post(createUser)
+ * Returns: { rootCall, routePath: '/users', chainedMethods: [{get, getUsers}, {post, createUser}] }
+ */
+function findRouteChainRoot(call: CallExpression): ChainRootInfo | null {
+  const chainedMethods: ChainedMethodInfo[] = [];
+  let current: Node = call;
+
+  // Walk up the chain collecting method calls
+  while (current && Node.isCallExpression(current)) {
+    const expr = current.getExpression();
+    
+    // Check if this is a MemberExpression (something.method)
+    if (Node.isPropertyAccessExpression(expr)) {
+      const methodName = expr.getName().toLowerCase();
+      const object = expr.getExpression();
+
+      // Check if this is the root router.route() call
+      if (Node.isCallExpression(object)) {
+        const objectExpr = object.getExpression();
+        const objectText = objectExpr.getText();
+
+        // Found router.route() - this is the root!
+        if (objectText.match(/\b(app|router)\.route\s*$/i)) {
+          const args = object.getArguments();
+          if (args.length > 0) {
+            const routePath = extractStringValue(args[0]);
+            if (routePath !== null) {
+              // Add the current method to the chain if it's an HTTP method
+              if (HTTP_METHODS.includes(methodName)) {
+                const methodInfo = extractMethodInfo(current as CallExpression, methodName);
+                chainedMethods.unshift(methodInfo); // Add to front since we're walking up
+              }
+              
+              return {
+                rootCall: object,
+                routePath,
+                chainedMethods
+              };
+            }
+          }
+          return null; // router.route() without valid path
+        }
+
+        // This is a chained HTTP method call, collect it and continue up
+        if (HTTP_METHODS.includes(methodName)) {
+          const methodInfo = extractMethodInfo(current as CallExpression, methodName);
+          chainedMethods.unshift(methodInfo); // Add to front since we're walking up
+          current = object; // Move up the chain
+          continue;
+        }
+      }
+
+      // Check if this is a direct router.route() call (no chaining above)
+      const objectText = object.getText();
+      if (objectText?.match(/\b(app|router)\s*$/i) && methodName === 'route') {
+        // This IS the router.route() call, but we need to get the path and check for chains
+        const args = (current as CallExpression).getArguments();
+        if (args.length > 0) {
+          const routePath = extractStringValue(args[0]);
+          if (routePath !== null) {
+            // Check if there are chained calls below this
+            const parent = current.getParent();
+            if (parent && Node.isPropertyAccessExpression(parent)) {
+              // There might be chains below, return what we have
+              return {
+                rootCall: current as CallExpression,
+                routePath,
+                chainedMethods
+              };
+            }
+          }
+        }
+        return null;
+      }
+    }
+
+    // Move to parent to check if we're part of a larger chain
+    const parent = current.getParent();
+    if (parent && Node.isPropertyAccessExpression(parent)) {
+      const grandparent = parent.getParent();
+      if (grandparent && Node.isCallExpression(grandparent)) {
+        // We're the object of another call, this current call is not the outermost
+        // Return null to avoid processing inner calls; we'll process from the outer call
+        return null;
+      }
+    }
+
+    break;
+  }
+
+  return null;
+}
+
+/**
+ * Extracts method info from a chained call like .get(handler) or .post(middleware, handler)
+ */
+function extractMethodInfo(call: CallExpression, methodName: string): ChainedMethodInfo {
+  const args = call.getArguments();
+  
+  // Last argument is the handler, others are middleware
+  const handler = args.length > 0 ? args[args.length - 1].getText() : 'anonymous';
+  const middleware = args.length > 1 ? args.slice(0, -1).map(a => a.getText()) : [];
+
+  return {
+    method: methodName,
+    handler,
+    middleware,
+    line: call.getStartLineNumber()
   };
 }
 

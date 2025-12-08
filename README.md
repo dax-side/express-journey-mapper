@@ -1,21 +1,21 @@
 # Express Journey Mapper
 
-> Production-grade CLI tool for automatically generating user journey documentation from Express.js codebases
+> Production-grade CLI tool for generating comprehensive API documentation from Express.js codebases with deep code analysis, validation schema extraction, and OpenAPI export
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/express-journey-mapper)
+[![npm version](https://img.shields.io/npm/v/express-journey-mapper.svg)](https://www.npmjs.com/package/express-journey-mapper)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen.svg)](https://nodejs.org)
 
 ## Overview
 
-Express Journey Mapper analyzes your Express.js codebase using AST parsing to automatically discover routes, analyze handler behavior, and generate interactive documentation showing how users flow through your API endpoints.
+Express Journey Mapper analyzes your Express.js codebase using AST parsing to automatically discover routes, extract validation schemas (Joi, Zod, express-validator), detect middleware chains, map service dependencies, and generate interactive documentation with OpenAPI export.
 
 **Key Benefits:**
-- Save hours of manual documentation work
-- Onboard new developers faster
-- Keep API documentation always up-to-date
-- Visualize complex user journeys
-- Share flows with non-technical stakeholders
+- **Deep Code Analysis** - Extracts schemas from Joi/Zod validators, not just route paths
+- **Middleware Visualization** - Shows auth, validation, rate-limiting chains
+- **Service Dependency Mapping** - Tracks database, payment, email service calls
+- **OpenAPI 3.0 Export** - Generate Swagger-compatible API specs automatically
+- **Multiple Output Formats** - HTML, JSON, Markdown, OpenAPI
 
 ## Installation
 
@@ -45,6 +45,7 @@ express-journey-mapper . --output ./docs
 # Generate different formats
 express-journey-mapper . --format json
 express-journey-mapper . --format markdown
+express-journey-mapper . --format openapi  # NEW: OpenAPI 3.0 spec
 
 # See what's happening (verbose mode)
 express-journey-mapper . --verbose
@@ -55,10 +56,36 @@ express-journey-mapper . --quiet
 
 ## Features
 
+### Deep Code Analysis (v1.0.6+)
+
+#### Validation Schema Extraction
+Automatically extracts field definitions from:
+- **Joi** - `Joi.object({ amount: Joi.number().required().min(100) })`
+- **Zod** - `z.object({ email: z.string().email() })`
+- **express-validator** - `body('email').isEmail()`
+
+Outputs include field names, types, required status, and validation rules.
+
+#### Middleware Chain Visualization
+Detects and categorizes middleware:
+- **Authentication** - authenticate, jwt, passport, requireAuth
+- **Authorization** - authorize, requireRole, isAdmin
+- **Validation** - validate, validateRequest, checkSchema
+- **Rate Limiting** - rateLimiter, rateLimit, throttle
+
+#### Service Dependency Mapping
+Tracks service layer interactions:
+- Database: Prisma, MongoDB, TypeORM, Sequelize
+- Payment: Stripe, Paystack, Braintree
+- Email: SendGrid, Mailgun, AWS SES
+- Storage: AWS S3, Cloudinary
+- Realtime: Socket.io events
+
 ### Automatic Route Discovery
 Scans your codebase to find all Express route definitions:
 - `app.get/post/put/delete/patch`
 - `router.get/post/put/delete/patch`
+- `router.route('/path').get().post()` (chained routes)
 - Middleware detection
 - Router mounting support
 
@@ -67,8 +94,8 @@ Analyzes each route handler to understand:
 - Request/response data shapes
 - Success and error response paths
 - External API calls (axios, fetch, etc.)
-- Database operations (Prisma, Mongoose, TypeORM)
-- Side effects (email, queues, caching)
+- Database operations
+- Side effects (email, queues, webhooks, SMS)
 
 ### Flow Generation
 Groups related routes into logical user journeys:
@@ -80,14 +107,19 @@ Groups related routes into logical user journeys:
 
 #### HTML (Interactive Viewer)
 - Single-file, offline-capable web application
-- Zero external dependencies
-- Sidebar navigation between flows
-- Expandable step details
-- Professional styling
+- Authentication badges, middleware chains, request/response bodies
+- Service calls and external dependencies visualization
+- Professional styling with zero external dependencies
+
+#### OpenAPI 3.0 (Swagger)
+- Standards-compliant API specification
+- Request body schemas from validation definitions
+- Path and query parameter documentation
+- Security schemes (JWT Bearer)
+- Ready for Swagger UI, Postman import
 
 #### JSON (Programmatic Access)
-- Structured flow data
-- Version information
+- Structured flow data with all analysis fields
 - Machine-readable format
 - Integration-ready
 

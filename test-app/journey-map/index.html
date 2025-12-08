@@ -499,6 +499,149 @@
     ]
   },
   {
+    "id": "products",
+    "title": "Products Flow",
+    "icon": "",
+    "description": "User journey for products operations",
+    "steps": [
+      {
+        "step": 1,
+        "action": "GET /api/products",
+        "endpoint": "GET /api/products",
+        "description": "GET /api/products",
+        "dataIn": "{}",
+        "dataOut": "{ products: [] }",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 2",
+            "description": "Success response"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "action": "POST /api/products",
+        "endpoint": "POST /api/products",
+        "description": "POST /api/products",
+        "dataIn": "{ body: object }",
+        "dataOut": "{ id: 1, name, price }",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 3",
+            "description": "Response"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "action": "GET /api/products/:id",
+        "endpoint": "GET /api/products/:id",
+        "description": "GET /api/products/:id",
+        "dataIn": "{}",
+        "dataOut": "{ products: [] }",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 4",
+            "description": "Success response"
+          }
+        ]
+      },
+      {
+        "step": 4,
+        "action": "PUT /api/products/:id",
+        "endpoint": "PUT /api/products/:id",
+        "description": "PUT /api/products/:id",
+        "dataIn": "{}",
+        "dataOut": "{ products: [] }",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 5",
+            "description": "Success response"
+          }
+        ]
+      },
+      {
+        "step": 5,
+        "action": "DELETE /api/products/:id",
+        "endpoint": "DELETE /api/products/:id",
+        "description": "DELETE /api/products/:id",
+        "dataIn": "{}",
+        "dataOut": "{}",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 6",
+            "description": "Response"
+          }
+        ]
+      },
+      {
+        "step": 6,
+        "action": "GET /api/products/featured",
+        "endpoint": "GET /api/products/featured",
+        "description": "GET /api/products/featured",
+        "dataIn": "{}",
+        "dataOut": "{ featured: [] }",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 7",
+            "description": "Success response"
+          }
+        ]
+      },
+      {
+        "step": 7,
+        "action": "ALL /api/products/admin",
+        "endpoint": "ALL /api/products/admin",
+        "description": "ALL /api/products/admin",
+        "dataIn": "{}",
+        "dataOut": "{}",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 8",
+            "description": "Success response"
+          }
+        ]
+      },
+      {
+        "step": 8,
+        "action": "GET /api/products/admin",
+        "endpoint": "GET /api/products/admin",
+        "description": "GET /api/products/admin",
+        "dataIn": "{}",
+        "dataOut": "{ products: [] }",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 9",
+            "description": "Success response"
+          }
+        ]
+      },
+      {
+        "step": 9,
+        "action": "POST /api/products/admin",
+        "endpoint": "POST /api/products/admin",
+        "description": "POST /api/products/admin",
+        "dataIn": "{}",
+        "dataOut": "{}",
+        "outcomes": [
+          {
+            "type": "success",
+            "next": "Step 10",
+            "description": "Response"
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "health",
     "title": "Health Flow",
     "icon": "",

@@ -7,12 +7,12 @@ import { scanProject } from './scanner/projectScanner';
 import { scanRoutes } from './scanner/routeScanner';
 import { analyzeHandler } from './analyzer/handlerAnalyzer';
 import { buildFlows } from './builder/flowBuilder';
-import { generateHtml, generateJson, generateMarkdown } from './generator';
+import { generateHtml, generateJson, generateMarkdown, generateOpenAPI } from './generator';
 
 interface CliOptions {
   output: string;
   config: string;
-  format: 'html' | 'json' | 'markdown';
+  format: 'html' | 'json' | 'markdown' | 'openapi';
   autoDetect: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -65,7 +65,7 @@ class CliError extends Error {
 }
 
 function validateOptions(options: CliOptions): void {
-  const validFormats = ['html', 'json', 'markdown'];
+  const validFormats = ['html', 'json', 'markdown', 'openapi'];
   if (!validFormats.includes(options.format)) {
     throw new CliError(
       `Invalid format: ${options.format}`,
@@ -92,7 +92,7 @@ program
   .argument('[path]', 'Project root path', '.')
   .option('-o, --output <path>', 'Output directory', './journey-map')
   .option('-c, --config <path>', 'Config file path')
-  .option('-f, --format <format>', 'Output format: html, json, or markdown', 'html')
+  .option('-f, --format <format>', 'Output format: html, json, markdown, or openapi', 'html')
   .option('--no-auto-detect', 'Disable automatic flow detection')
   .option('-v, --verbose', 'Show detailed output', false)
   .option('-q, --quiet', 'Suppress non-error output', false)
@@ -210,10 +210,19 @@ program
           await generateMarkdown(flows, generatedFile);
           logger.success(`✓ Markdown: ${path.relative(process.cwd(), generatedFile)}`);
           break;
+        case 'openapi':
+          generatedFile = path.join(outputPath, 'openapi.json');
+          await generateOpenAPI(flows, generatedFile, {
+            title: 'API Documentation',
+            version: '1.0.0',
+            description: 'Auto-generated API documentation'
+          });
+          logger.success(`✓ OpenAPI: ${path.relative(process.cwd(), generatedFile)}`);
+          break;
         default:
           throw new CliError(
             `Invalid format: ${options.format}`,
-            ['Valid formats are: html, json, markdown'],
+            ['Valid formats are: html, json, markdown, openapi'],
             'INVALID_FORMAT'
           );
       }

@@ -10,7 +10,7 @@ export interface ScannedProject {
 }
 
 export interface Route {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'ALL';
   path: string;
   handlerName: string;
   handlerFile: string;
@@ -21,24 +21,99 @@ export interface Route {
   };
 }
 
+/** Detailed field schema for request/response */
+export interface FieldSchema {
+  name: string;
+  type: string;
+  required?: boolean;
+  description?: string;
+  validation?: string[];  // e.g., ['min: 100', 'max: 1000']
+  example?: string;
+}
+
+/** Validation schema extracted from Joi/Zod/express-validator */
+export interface ValidationSchema {
+  source: 'joi' | 'zod' | 'express-validator' | 'inferred';
+  fields: FieldSchema[];
+  rawSchema?: string;
+}
+
+/** Middleware information for a route */
+export interface MiddlewareInfo {
+  name: string;
+  type: 'auth' | 'validation' | 'rateLimit' | 'upload' | 'cors' | 'unknown';
+  details?: string;  // e.g., 'JWT required', 'admin role'
+}
+
+/** Service call traced from controller */
+export interface ServiceCall {
+  serviceName: string;
+  methodName: string;
+  file?: string;
+}
+
+/** Path parameter from URL */
+export interface PathParam {
+  name: string;
+  type: string;
+  example?: string;
+}
+
+/** Query parameter extracted from req.query usage */
+export interface QueryParam {
+  name: string;
+  type: string;
+  required?: boolean;
+  example?: string;
+}
+
+/** Response status and shape */
+export interface ResponseInfo {
+  statusCode: number;
+  description: string;
+  schema?: string;
+  example?: string;
+}
+
 export interface HandlerAnalysis {
   endpoint: string;
   description: string;
-  dataIn: string;
-  dataOut: string;
+  
+  // Enhanced request info
+  pathParams: PathParam[];
+  queryParams: QueryParam[];
+  requestBody: ValidationSchema | null;
+  
+  // Enhanced response info
+  responses: ResponseInfo[];
+  
+  // Middleware chain
+  middlewareChain: MiddlewareInfo[];
+  authRequired: boolean;
+  authDetails?: string;  // e.g., 'JWT', 'admin role required'
+  
+  // Service layer
+  serviceCalls: ServiceCall[];
+  
+  // External dependencies
   externalCalls: ExternalCall[];
   sideEffects: SideEffect[];
+  
+  // Legacy compat
+  dataIn: string;
+  dataOut: string;
   outcomes: Outcome[];
 }
 
 export interface ExternalCall {
-  type: 'http' | 'database' | 'queue' | 'email';
+  type: 'http' | 'database' | 'queue' | 'email' | 'payment' | 'storage';
   target: string;
   method?: string;
+  service?: string;  // e.g., 'Stripe', 'SendGrid', 'S3'
 }
 
 export interface SideEffect {
-  type: 'email' | 'queue' | 'cache' | 'file';
+  type: 'email' | 'queue' | 'cache' | 'file' | 'socket' | 'webhook' | 'notification';
   description: string;
 }
 
@@ -62,6 +137,26 @@ export interface FlowStep {
   action: string;
   endpoint: string;
   description: string;
+  
+  // Enhanced request info
+  pathParams?: PathParam[];
+  queryParams?: QueryParam[];
+  requestBody?: ValidationSchema | null;
+  
+  // Enhanced response info  
+  responses?: ResponseInfo[];
+  
+  // Middleware chain
+  middlewareChain?: MiddlewareInfo[];
+  authRequired?: boolean;
+  authDetails?: string;
+  
+  // Service dependencies
+  serviceCalls?: ServiceCall[];
+  externalCalls?: ExternalCall[];
+  sideEffects?: SideEffect[];
+  
+  // Legacy compat
   dataIn: string;
   dataOut: string;
   externalCall?: string;

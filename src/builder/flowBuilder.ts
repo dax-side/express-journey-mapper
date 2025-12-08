@@ -109,6 +109,26 @@ function createFlowStep(analysis: HandlerAnalysis, stepNumber: number): FlowStep
     action: analysis.endpoint,
     endpoint: analysis.endpoint,
     description: analysis.description || `Step ${stepNumber}`,
+    
+    // Enhanced request info
+    pathParams: analysis.pathParams,
+    queryParams: analysis.queryParams,
+    requestBody: analysis.requestBody,
+    
+    // Enhanced response info
+    responses: analysis.responses,
+    
+    // Middleware chain
+    middlewareChain: analysis.middlewareChain,
+    authRequired: analysis.authRequired,
+    authDetails: analysis.authDetails,
+    
+    // Service dependencies
+    serviceCalls: analysis.serviceCalls,
+    externalCalls: analysis.externalCalls,
+    sideEffects: analysis.sideEffects,
+    
+    // Legacy compat
     dataIn: analysis.dataIn,
     dataOut: analysis.dataOut,
     externalCall: analysis.externalCalls.length > 0 ? analysis.externalCalls[0].target : undefined,

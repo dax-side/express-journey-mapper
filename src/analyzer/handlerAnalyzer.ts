@@ -1,5 +1,13 @@
 import { Project, Node, SyntaxKind, SourceFile, CallExpression } from 'ts-morph';
-import { Route, HandlerAnalysis, ExternalCall, SideEffect, Outcome } from '../types';
+import { Route, HandlerAnalysis, ExternalCall, SideEffect, Outcome, ResponseInfo } from '../types';
+import { 
+  extractValidationSchema, 
+  analyzeMiddleware, 
+  extractPathParams, 
+  extractQueryParams,
+  findServiceCalls,
+  clearSchemaCache
+} from './schemaExtractor';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -41,13 +49,49 @@ export function analyzeHandler(route: Route): HandlerAnalysis {
       return createDefaultAnalysis(route);
     }
 
+    // Extract path parameters from URL pattern
+    const pathParams = extractPathParams(route.path);
+    
+    // Extract query parameters from handler code
+    const queryParams = extractQueryParams(handler);
+    
+    // Analyze middleware chain
+    const middlewareChain = analyzeMiddleware(route.middleware);
+    
+    // Check if auth is required
+    const authMiddleware = middlewareChain.find(m => m.type === 'auth');
+    const authRequired = !!authMiddleware;
+    
+    // Try to extract validation schema from middleware
+    const requestBody = extractValidationSchema(route.middleware, sourceFile);
+    
+    // Find service layer calls
+    const serviceCalls = findServiceCalls(handler);
+    
+    // Extract all response information
+    const responses = extractResponses(handler);
+    
     const analysis: HandlerAnalysis = {
       endpoint: `${route.method} ${route.path}`,
       description: generateDescription(route, handler),
-      dataIn: extractRequestShape(handler),
-      dataOut: extractResponseShape(handler),
+      
+      // New enhanced fields
+      pathParams,
+      queryParams,
+      requestBody,
+      responses,
+      middlewareChain,
+      authRequired,
+      authDetails: authMiddleware?.details,
+      serviceCalls,
+      
+      // External dependencies
       externalCalls: findExternalCalls(handler),
       sideEffects: findSideEffects(handler),
+      
+      // Legacy compat
+      dataIn: extractRequestShape(handler),
+      dataOut: extractResponseShape(handler),
       outcomes: findOutcomes(handler)
     };
 
@@ -63,6 +107,7 @@ export function analyzeHandler(route: Route): HandlerAnalysis {
  */
 export function clearAnalyzerCache(): void {
   sourceFileCache.clear();
+  clearSchemaCache();
   sharedProject = null;
 }
 
@@ -148,16 +193,34 @@ function findInlineHandler(sourceFile: SourceFile, handlerName: string): Node | 
   // Try to find an arrow function or function expression that matches
   const arrowFunctions = sourceFile.getDescendantsOfKind(SyntaxKind.ArrowFunction);
   
+  // Normalize the handler name for comparison
+  const normalizedHandler = handlerName.replace(/\s+/g, ' ').trim();
+  
   for (const arrow of arrowFunctions) {
-    const text = arrow.getText();
-    // Match if the handler name is a substring (it's the inline definition)
-    if (handlerName.includes(text.substring(0, 50)) || text.includes(handlerName.substring(0, 50))) {
+    const text = arrow.getText().replace(/\s+/g, ' ').trim();
+    // Match if either contains a significant portion of the other
+    const handlerPrefix = normalizedHandler.substring(0, Math.min(100, normalizedHandler.length));
+    const arrowPrefix = text.substring(0, Math.min(100, text.length));
+    
+    if (handlerPrefix === arrowPrefix || 
+        normalizedHandler.includes(arrowPrefix) || 
+        text.includes(handlerPrefix.substring(0, 60))) {
       return arrow;
     }
   }
 
-  // Return first inline handler as fallback
-  return arrowFunctions[0] || sourceFile.getDescendantsOfKind(SyntaxKind.FunctionExpression)[0] || null;
+  // Try function expressions
+  const funcExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.FunctionExpression);
+  for (const func of funcExpressions) {
+    const text = func.getText().replace(/\s+/g, ' ').trim();
+    const normalizedFirst100 = normalizedHandler.substring(0, 100);
+    if (text.includes(normalizedFirst100.substring(0, 60))) {
+      return func;
+    }
+  }
+
+  // No fallback - return null if no match found to avoid incorrect analysis
+  return null;
 }
 
 /**
@@ -244,19 +307,160 @@ function resolveModulePath(currentFile: string, moduleSpecifier: string): string
  * Creates a minimal default analysis
  */
 function createDefaultAnalysis(route: Route): HandlerAnalysis {
+  const pathParams = extractPathParams(route.path);
+  const middlewareChain = analyzeMiddleware(route.middleware);
+  const authMiddleware = middlewareChain.find(m => m.type === 'auth');
+  
   return {
     endpoint: `${route.method} ${route.path}`,
     description: `Handler for ${route.method} ${route.path}`,
-    dataIn: '{}',
-    dataOut: '{}',
+    
+    pathParams,
+    queryParams: [],
+    requestBody: null,
+    responses: [{ statusCode: 200, description: 'Success response' }],
+    middlewareChain,
+    authRequired: !!authMiddleware,
+    authDetails: authMiddleware?.details,
+    serviceCalls: [],
+    
     externalCalls: [],
     sideEffects: [],
+    
+    dataIn: '{}',
+    dataOut: '{}',
     outcomes: [{
       type: 'success',
       statusCode: 200,
       description: 'Success response'
     }]
   };
+}
+
+/**
+ * Extracts all response information from handler (status codes, schemas, examples)
+ */
+function extractResponses(handler: Node): ResponseInfo[] {
+  const responses: ResponseInfo[] = [];
+  const seenStatusCodes = new Set<number>();
+  
+  const calls = handler.getDescendantsOfKind(SyntaxKind.CallExpression);
+  
+  for (const call of calls) {
+    const expr = call.getExpression().getText();
+    
+    // Look for res.status(code).json({...})
+    if (expr.includes('.status')) {
+      const statusMatch = call.getText().match(/\.status\((\d+)\)/);
+      if (statusMatch) {
+        const statusCode = parseInt(statusMatch[1], 10);
+        if (!seenStatusCodes.has(statusCode)) {
+          seenStatusCodes.add(statusCode);
+          
+          const schema = extractResponseSchemaFromChain(call);
+          responses.push({
+            statusCode,
+            description: getStatusDescription(statusCode),
+            schema,
+            example: extractResponseExample(call)
+          });
+        }
+      }
+    }
+    
+    // Look for direct res.json() or res.send() (defaults to 200)
+    if ((expr === 'res.json' || expr === 'res.send') && !seenStatusCodes.has(200)) {
+      seenStatusCodes.add(200);
+      const args = call.getArguments();
+      responses.push({
+        statusCode: 200,
+        description: 'Success',
+        schema: args.length > 0 ? formatResponseShape(args[0].getText()) : undefined,
+        example: args.length > 0 ? args[0].getText() : undefined
+      });
+    }
+  }
+  
+  // Add default 200 if no responses found
+  if (responses.length === 0) {
+    responses.push({
+      statusCode: 200,
+      description: 'Success response'
+    });
+  }
+  
+  // Sort by status code
+  responses.sort((a, b) => a.statusCode - b.statusCode);
+  
+  return responses;
+}
+
+/**
+ * Extracts response schema from a chained call
+ */
+function extractResponseSchemaFromChain(statusCall: CallExpression): string | undefined {
+  // Look for .json() or .send() chained after status
+  const parent = statusCall.getParent();
+  if (!parent) return undefined;
+  
+  const parentText = parent.getText();
+  
+  // Try to find the json/send call in the chain
+  if (Node.isPropertyAccessExpression(parent)) {
+    const grandparent = parent.getParent();
+    if (grandparent && Node.isCallExpression(grandparent)) {
+      const args = grandparent.getArguments();
+      if (args.length > 0) {
+        return formatResponseShape(args[0].getText());
+      }
+    }
+  }
+  
+  // Try regex as fallback
+  const jsonMatch = parentText.match(/\.json\(([^)]+)\)/);
+  if (jsonMatch) {
+    return formatResponseShape(jsonMatch[1]);
+  }
+  
+  return undefined;
+}
+
+/**
+ * Extracts example response from call
+ */
+function extractResponseExample(call: CallExpression): string | undefined {
+  const text = call.getText();
+  const jsonMatch = text.match(/\.json\((\{[^}]+\})\)/);
+  if (jsonMatch) {
+    return jsonMatch[1];
+  }
+  return undefined;
+}
+
+/**
+ * Gets human-readable description for HTTP status code
+ */
+function getStatusDescription(statusCode: number): string {
+  const descriptions: Record<number, string> = {
+    200: 'Success',
+    201: 'Created',
+    204: 'No Content',
+    301: 'Moved Permanently',
+    302: 'Found (Redirect)',
+    304: 'Not Modified',
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'Not Found',
+    405: 'Method Not Allowed',
+    409: 'Conflict',
+    422: 'Unprocessable Entity',
+    429: 'Too Many Requests',
+    500: 'Internal Server Error',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable'
+  };
+  return descriptions[statusCode] || `HTTP ${statusCode}`;
 }
 
 /**
@@ -457,13 +661,14 @@ function extractMessageFromChain(statusCall: CallExpression): string {
 }
 
 /**
- * Finds external API/database calls
+ * Finds external API/database calls including payment providers, cloud services, etc.
  */
 function findExternalCalls(handler: Node): ExternalCall[] {
   const calls: ExternalCall[] = [];
   const seen = new Set<string>();
 
   const callExpressions = handler.getDescendantsOfKind(SyntaxKind.CallExpression);
+  const handlerText = handler.getText();
 
   for (const call of callExpressions) {
     const text = call.getText();
@@ -481,9 +686,9 @@ function findExternalCalls(handler: Node): ExternalCall[] {
       }
     }
     
-    // Database: Prisma, Mongoose, TypeORM, Sequelize
-    if (text.match(/\b(prisma|mongoose|typeorm|sequelize|db|model)\b/i) ||
-        text.match(/\.(find|create|update|delete|save|insert|query)/i)) {
+    // Database: Prisma, Mongoose, TypeORM, Sequelize, Knex
+    if (text.match(/\b(prisma|mongoose|typeorm|sequelize|knex|db|model)\b/i) ||
+        text.match(/\.(find|create|update|delete|save|insert|query|aggregate|populate)/i)) {
       const target = extractDbTarget(text);
       if (target && !seen.has(`db:${target}`)) {
         seen.add(`db:${target}`);
@@ -494,8 +699,79 @@ function findExternalCalls(handler: Node): ExternalCall[] {
       }
     }
   }
+  
+  // Payment providers
+  if (handlerText.match(/\b(stripe|paystack|flutterwave|paypal|razorpay|square)\b/i)) {
+    const service = extractServiceName(handlerText, ['stripe', 'paystack', 'flutterwave', 'paypal', 'razorpay', 'square']);
+    if (service && !seen.has(`payment:${service}`)) {
+      seen.add(`payment:${service}`);
+      calls.push({
+        type: 'payment',
+        target: extractPaymentOperation(handlerText),
+        service: capitalizeFirst(service)
+      });
+    }
+  }
+  
+  // Cloud storage
+  if (handlerText.match(/\b(s3|cloudinary|gcs|azure.*blob|minio|uploadthing)\b/i)) {
+    const service = extractServiceName(handlerText, ['s3', 'cloudinary', 'gcs', 'minio', 'uploadthing']);
+    if (service && !seen.has(`storage:${service}`)) {
+      seen.add(`storage:${service}`);
+      calls.push({
+        type: 'storage',
+        target: 'File upload/storage',
+        service: service === 's3' ? 'AWS S3' : capitalizeFirst(service)
+      });
+    }
+  }
+  
+  // Email services
+  if (handlerText.match(/\b(sendgrid|mailgun|ses|postmark|mailchimp|resend)\b/i)) {
+    const service = extractServiceName(handlerText, ['sendgrid', 'mailgun', 'ses', 'postmark', 'mailchimp', 'resend']);
+    if (service && !seen.has(`email:${service}`)) {
+      seen.add(`email:${service}`);
+      calls.push({
+        type: 'email',
+        target: 'Send email',
+        service: service === 'ses' ? 'AWS SES' : capitalizeFirst(service)
+      });
+    }
+  }
 
   return calls;
+}
+
+/**
+ * Extracts service name from text
+ */
+function extractServiceName(text: string, services: string[]): string | null {
+  const lowerText = text.toLowerCase();
+  for (const service of services) {
+    if (lowerText.includes(service)) {
+      return service;
+    }
+  }
+  return null;
+}
+
+/**
+ * Extracts payment operation type
+ */
+function extractPaymentOperation(text: string): string {
+  if (text.match(/\b(charge|payment|pay|checkout)\b/i)) return 'Process payment';
+  if (text.match(/\b(refund)\b/i)) return 'Process refund';
+  if (text.match(/\b(subscription|subscribe)\b/i)) return 'Manage subscription';
+  if (text.match(/\b(transfer)\b/i)) return 'Transfer funds';
+  if (text.match(/\b(verify|validate)\b/i)) return 'Verify payment';
+  return 'Payment operation';
+}
+
+/**
+ * Capitalizes first letter
+ */
+function capitalizeFirst(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /**
@@ -545,30 +821,45 @@ function extractDbTarget(text: string): string | null {
 }
 
 /**
- * Finds side effects (email, queue, cache, file operations)
+ * Finds side effects (email, queue, cache, file, socket, webhook operations)
  */
 function findSideEffects(handler: Node): SideEffect[] {
   const effects: SideEffect[] = [];
   const text = handler.getText();
 
   // Email
-  if (text.match(/\b(sendEmail|sendMail|email|mailer|nodemailer|sendgrid|mailgun)\b/i)) {
+  if (text.match(/\b(sendEmail|sendMail|email|mailer|nodemailer|sendgrid|mailgun|ses|postmark)\b/i)) {
     effects.push({ type: 'email', description: 'Sends email notification' });
   }
 
   // Queue/messaging
-  if (text.match(/\b(publish|queue|amqp|rabbitmq|kafka|sqs|bull)\b/i)) {
+  if (text.match(/\b(publish|queue|amqp|rabbitmq|kafka|sqs|bull|redis\.publish|pubsub|nats)\b/i)) {
     effects.push({ type: 'queue', description: 'Publishes message to queue' });
   }
 
   // Cache
-  if (text.match(/\b(redis|cache|memcached|setCache|invalidate)\b/i)) {
+  if (text.match(/\b(redis|cache|memcached|setCache|invalidate|del\(|flushall)\b/i)) {
     effects.push({ type: 'cache', description: 'Updates cache' });
   }
 
-  // File operations
-  if (text.match(/\b(writeFile|createWriteStream|upload|s3\.put|storage)\b/i)) {
+  // File/storage operations
+  if (text.match(/\b(writeFile|createWriteStream|upload|s3\.put|storage|unlink|rmdir|cloudinary)\b/i)) {
     effects.push({ type: 'file', description: 'Writes to file/storage' });
+  }
+  
+  // Socket/realtime
+  if (text.match(/\b(socket|io\.emit|broadcast|websocket|pusher|ably)\b/i)) {
+    effects.push({ type: 'socket', description: 'Emits realtime event' });
+  }
+  
+  // Webhook
+  if (text.match(/\b(webhook|callback|notify|trigger)\b/i) && text.match(/\b(post|send|emit)\b/i)) {
+    effects.push({ type: 'webhook', description: 'Triggers webhook' });
+  }
+  
+  // Push notifications
+  if (text.match(/\b(fcm|firebase|apns|push|notification|onesignal|expo.*push)\b/i)) {
+    effects.push({ type: 'notification', description: 'Sends push notification' });
   }
 
   return effects;

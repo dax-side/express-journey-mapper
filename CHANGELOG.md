@@ -2,62 +2,88 @@
 
 All notable changes to express-journey-mapper will be documented in this file.
 
+## [1.0.6] - 2025-12-08
+
+### Added - Deep Code Analysis & OpenAPI Export
+This release transforms the tool from a basic route inventory to comprehensive API documentation generator.
+
+#### Schema Extraction
+- **Joi Validation Support** - Automatically extracts field definitions from Joi.object() schemas
+  - Field names, types, required status
+  - Validation rules: min, max, email, pattern, valid()
+- **Zod Validation Support** - Parses z.object() schema definitions
+  - Field names, types, optional detection
+  - Validation rules: min, max, email, url, regex
+- **express-validator Support** - Extracts validation chains
+  - body(), param(), query() field detection
+  - Validation rule extraction
+
+#### Middleware Chain Visualization
+- Detects and categorizes middleware types:
+  - **Authentication**: authenticate, auth, jwt, passport, requireAuth
+  - **Authorization**: authorize, requireRole, isAdmin, can, permit
+  - **Validation**: validate, validateRequest, checkSchema
+  - **Rate Limiting**: rateLimiter, rateLimit, throttle
+- Shows complete middleware execution order per route
+
+#### Service Dependency Mapping
+- Detects service layer calls (ServiceName.methodName pattern)
+- Tracks this.service.method() patterns
+- Maps external dependencies:
+  - Payment: Stripe, Paystack, Braintree
+  - Email: SendGrid, Mailgun, AWS SES
+  - Cloud Storage: AWS S3, Cloudinary
+  - Databases: Prisma, MongoDB, TypeORM, Sequelize
+  - Realtime: Socket.io events
+
+#### OpenAPI 3.0 Export
+- New `--format openapi` option generates OpenAPI 3.0 specification
+- Automatic schema generation from validation definitions
+- Path parameters converted to OpenAPI format (:id → {id})
+- Query parameter documentation
+- Request body schemas with field constraints
+- Response schemas with status codes
+- Security schemes (JWT Bearer authentication)
+- Tags organized by flow/resource
+
+#### Enhanced HTML Output
+- **Authentication Section** - Shows auth requirements with JWT badge
+- **Middleware Chain** - Step-by-step middleware visualization
+- **Path Parameters** - Tabular display with types and examples
+- **Query Parameters** - Shows optional/required status
+- **Request Body** - Field details with type, required, constraints
+- **Response Bodies** - Organized by status code
+- **Service Calls** - Lists all service layer interactions
+- **External Dependencies** - Payment, email, storage services
+- **Side Effects** - Email, socket, webhook, SMS notifications
+
+### Fixed
+- Handler matching for inline arrow functions (prevents wrong handler analysis)
+- Schema extraction now correctly parses middleware arguments like validate(schema)
+- Unique OpenAPI schema names per HTTP method (POST vs PUT)
+
+### Technical Improvements
+- New schemaExtractor.ts module (~600 lines) for deep code analysis
+- Enhanced handlerAnalyzer.ts with comprehensive extraction
+- New openapiGenerator.ts module (~540 lines) for OpenAPI export
+- Improved FlowStep type with 15+ new fields
+
+## [1.0.5] - 2025-12-06
+
+### Added
+- Support for chained route patterns: router.route('/path').get().post()
+
+## [1.0.4] - 2025-12-06
+
+### Fixed
+- Modular router detection (Router.get() vs app.get())
+- node_modules crash prevention
+- Config file parsing improvements
+
 ## [1.0.0] - 2025-12-06
 
 ### Added
 - Initial release of Express Journey Mapper
-- Automatic Express route discovery via AST parsing
-- Handler function analysis with ts-morph
-- User flow generation with intelligent path grouping
-- Multiple output formats: HTML, JSON, Markdown
-- Professional CLI with CliLogger and CliError classes
-- Verbose and quiet modes for different output levels
-- Duration tracking for performance visibility
-- Error handling with actionable suggestions
-
-### Fixed
-- **TypeScript Type Safety** - Fixed critical type errors in handlerAnalyzer.ts
-  - Added proper CallExpression type imports from ts-morph
-  - Implemented type guards using `Node.isCallExpression()` before casting
-  - Fixed `extractDescription()` to safely access CallExpression methods
-  - Fixed `extractUrl()` to properly cast Node to CallExpression
-  - Added try-catch error handling throughout analyzer
-- **Route Detection** - Improved regex pattern to detect all Express HTTP methods
-- **Template Path Resolution** - Fixed HTML template loading in ESM context
-
-### Changed
-- **Professional Output** - Removed ALL emoji characters from codebase
-  - CLI uses minimal symbols: ✓ ✗ → •
-  - HTML template uses ✓/✗ for success/error indicators
-  - Markdown uses [SUCCESS]/[ERROR] text labels
-  - Flow builder defaults to empty icon field
-  - Error messages use professional formatting
-- **Enhanced Handler Analysis**
-  - Added `generateDescription()` for comprehensive handler summaries
-  - Improved `extractRequestShape()` to detect body/query/params/headers
-  - Enhanced `extractHttpMethod()` to support PATCH and config objects
-  - Better `extractTableName()` supporting Prisma, MongoDB, Mongoose patterns
-  - Added `inferTypeFromUsage()` for intelligent type detection
-  - Improved error handling with graceful degradation
-
-### Technical Improvements
-- Strict TypeScript compilation with zero errors
-- Proper type safety in AST node manipulation
-- Enhanced error handling throughout codebase
-- Better inline handler detection (arrow functions, function expressions)
-- Comprehensive code documentation with JSDoc comments
-
-### Known Issues
-- Test app has implicit any types (cosmetic, doesn't affect production)
-- Markdown files have linting warnings (formatting only, no functional impact)
-- Package.json has "types" condition warning (doesn't affect functionality)
-
-## Architecture
-
-### Core Modules
-1. **scanner/projectScanner.ts** - File discovery using glob patterns
-2. **scanner/routeScanner.ts** - AST-based route detection with ts-morph
-3. **analyzer/handlerAnalyzer.ts** - Handler function behavior analysis (REFACTORED)
 4. **builder/flowBuilder.ts** - User flow generation and grouping (REFACTORED)
 5. **generator/** - HTML/JSON/Markdown output generators (ALL REFACTORED)
 6. **cli.ts** - Professional command-line interface (FULLY REFACTORED)

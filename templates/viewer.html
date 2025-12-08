@@ -99,32 +99,8 @@
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 20px;
+      margin-left: 50px;
       position: relative;
-    }
-
-    .step::before {
-      content: '';
-      position: absolute;
-      left: -15px;
-      top: 20px;
-      width: 0;
-      height: 0;
-      border-top: 8px solid transparent;
-      border-bottom: 8px solid transparent;
-      border-right: 8px solid white;
-    }
-
-    .step::after {
-      content: '';
-      position: absolute;
-      left: -14px;
-      top: 20px;
-      width: 0;
-      height: 0;
-      border-top: 8px solid transparent;
-      border-bottom: 8px solid transparent;
-      border-right: 8px solid #e2e8f0;
-      z-index: -1;
     }
 
     .step-number {
@@ -145,6 +121,11 @@
 
     .step-header {
       margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .step-endpoint {
@@ -153,8 +134,26 @@
       padding: 4px 8px;
       border-radius: 4px;
       font-size: 14px;
-      margin-bottom: 8px;
-      display: inline-block;
+    }
+
+    .auth-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .auth-badge.required {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+
+    .auth-badge.no-auth {
+      background: #f1f5f9;
+      color: #64748b;
     }
 
     .step-description {
@@ -162,6 +161,345 @@
       margin-bottom: 16px;
     }
 
+    /* Middleware Chain */
+    .middleware-chain {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 8px;
+      border: 1px solid #e5e5e5;
+    }
+
+    .middleware-item {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+    .middleware-item.auth {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .middleware-item.validation {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .middleware-item.rateLimit {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .middleware-item.upload {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .middleware-item.unknown {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .middleware-arrow {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    /* Parameters */
+    .params-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .param-section {
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .param-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .param-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 13px;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+
+    .param-item:last-child {
+      border-bottom: none;
+    }
+
+    .param-name {
+      font-family: 'Monaco', 'Menlo', monospace;
+      color: #0f172a;
+    }
+
+    .param-type {
+      color: #6366f1;
+      font-size: 12px;
+    }
+
+    .param-required {
+      color: #dc2626;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    /* Request Body Schema */
+    .schema-section {
+      background: #fffbeb;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #fcd34d;
+      margin-bottom: 16px;
+    }
+
+    .schema-source {
+      font-size: 10px;
+      font-weight: 600;
+      color: #92400e;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .schema-field {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      background: white;
+      margin-bottom: 4px;
+      border-radius: 4px;
+      border: 1px solid #fcd34d;
+    }
+
+    .field-name {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-weight: 500;
+    }
+
+    .field-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .field-type {
+      color: #6366f1;
+    }
+
+    .field-validation {
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    /* Responses */
+    .responses-section {
+      margin-bottom: 16px;
+    }
+
+    .responses-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .response-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 10px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+    }
+
+    .response-item.error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+    }
+
+    .response-status {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-right: 12px;
+    }
+
+    .response-item.success .response-status {
+      background: #22c55e;
+      color: white;
+    }
+
+    .response-item.error .response-status {
+      background: #ef4444;
+      color: white;
+    }
+
+    .response-body {
+      flex: 1;
+    }
+
+    .response-description {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .response-schema {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      color: #64748b;
+      background: white;
+      padding: 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Service Calls */
+    .services-section {
+      margin-bottom: 16px;
+    }
+
+    .service-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      font-size: 13px;
+    }
+
+    .service-icon {
+      margin-right: 8px;
+      font-size: 14px;
+    }
+
+    .service-name {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-weight: 500;
+      color: #0369a1;
+    }
+
+    .service-method {
+      color: #64748b;
+      margin-left: 4px;
+    }
+
+    /* External Calls */
+    .external-section {
+      margin-bottom: 16px;
+    }
+
+    .external-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .external-item.database {
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+    }
+
+    .external-item.payment {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+    }
+
+    .external-item.email {
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+    }
+
+    .external-item.http {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+    }
+
+    .external-item.storage {
+      background: #e0e7ff;
+      border: 1px solid #c7d2fe;
+    }
+
+    .external-icon {
+      margin-right: 8px;
+      font-size: 14px;
+    }
+
+    .external-type {
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .external-target {
+      font-family: 'Monaco', 'Menlo', monospace;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .external-service {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.1);
+    }
+
+    /* Side Effects */
+    .side-effects {
+      margin-bottom: 16px;
+    }
+
+    .side-effect {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      font-size: 13px;
+    }
+
+    .side-effect-icon {
+      margin-right: 8px;
+    }
+
+    /* Legacy Sections */
     .step-details {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -194,47 +532,29 @@
       border: 1px solid #e2e8f0;
       white-space: pre-wrap;
       word-break: break-all;
-    }
-
-    .outcomes {
-      margin-top: 16px;
-    }
-
-    .outcome {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      margin-bottom: 8px;
-      border-radius: 6px;
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-    }
-
-    .outcome.error {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-    }
-
-    .outcome-icon {
-      margin-right: 8px;
-      font-size: 14px;
-    }
-
-    .outcome-text {
-      flex: 1;
-      font-size: 14px;
-    }
-
-    .outcome-next {
-      font-size: 12px;
-      color: #64748b;
-      font-weight: 500;
+      max-height: 150px;
+      overflow-y: auto;
     }
 
     .no-flows {
       text-align: center;
       padding: 40px;
       color: #64748b;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state {
+      color: #94a3b8;
+      font-style: italic;
+      font-size: 13px;
     }
   </style>
 </head>
@@ -278,6 +598,177 @@
       `).join('');
     }
 
+    function getMethodClass(statusCode) {
+      return statusCode >= 400 ? 'error' : 'success';
+    }
+
+    function getExternalIcon(type) {
+      const icons = {
+        database: '🗄️',
+        http: '🌐',
+        payment: '💳',
+        email: '📧',
+        storage: '☁️',
+        queue: '📬'
+      };
+      return icons[type] || '🔗';
+    }
+
+    function getSideEffectIcon(type) {
+      const icons = {
+        email: '📧',
+        queue: '📬',
+        cache: '⚡',
+        file: '📁',
+        socket: '🔌',
+        webhook: '🔔',
+        notification: '📱'
+      };
+      return icons[type] || '⚡';
+    }
+
+    function renderMiddlewareChain(chain) {
+      if (!chain || chain.length === 0) return '';
+      
+      return `
+        <div class="middleware-chain">
+          ${chain.map((mw, i) => `
+            <span class="middleware-item ${mw.type}">${mw.name}</span>
+            ${i < chain.length - 1 ? '<span class="middleware-arrow">→</span>' : ''}
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderPathParams(params) {
+      if (!params || params.length === 0) return '';
+      
+      return `
+        <div class="param-section">
+          <div class="param-title">Path Parameters</div>
+          ${params.map(p => `
+            <div class="param-item">
+              <span class="param-name">:${p.name}</span>
+              <span class="param-type">${p.type}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderQueryParams(params) {
+      if (!params || params.length === 0) return '';
+      
+      return `
+        <div class="param-section">
+          <div class="param-title">Query Parameters</div>
+          ${params.map(p => `
+            <div class="param-item">
+              <span class="param-name">${p.name}${p.required ? ' <span class="param-required">*</span>' : ''}</span>
+              <span class="param-type">${p.type}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderRequestBody(schema) {
+      if (!schema || !schema.fields || schema.fields.length === 0) return '';
+      
+      return `
+        <div class="schema-section">
+          <div class="schema-source">Request Body (${schema.source})</div>
+          ${schema.fields.map(f => `
+            <div class="schema-field">
+              <span class="field-name">${f.name}${f.required ? ' <span class="param-required">*</span>' : ''}</span>
+              <span class="field-info">
+                <span class="field-type">${f.type}</span>
+                ${f.validation && f.validation.length > 0 ? `<span class="field-validation">(${f.validation.join(', ')})</span>` : ''}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderResponses(responses) {
+      if (!responses || responses.length === 0) return '';
+      
+      return `
+        <div class="responses-section">
+          <div class="section-title">Responses</div>
+          ${responses.map(r => `
+            <div class="response-item ${getMethodClass(r.statusCode)}">
+              <span class="response-status">${r.statusCode}</span>
+              <div class="response-body">
+                <div class="response-description">${r.description}</div>
+                ${r.schema ? `<div class="response-schema">${escapeHtml(r.schema)}</div>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderServiceCalls(calls) {
+      if (!calls || calls.length === 0) return '';
+      
+      return `
+        <div class="services-section">
+          <div class="section-title">Service Calls</div>
+          ${calls.map(c => `
+            <div class="service-item">
+              <span class="service-icon">⚙️</span>
+              <span class="service-name">${c.serviceName}</span>
+              <span class="service-method">.${c.methodName}()</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderExternalCalls(calls) {
+      if (!calls || calls.length === 0) return '';
+      
+      return `
+        <div class="external-section">
+          <div class="section-title">External Dependencies</div>
+          ${calls.map(c => `
+            <div class="external-item ${c.type}">
+              <span class="external-icon">${getExternalIcon(c.type)}</span>
+              <span class="external-type">${c.type}</span>
+              <span class="external-target">${c.target}</span>
+              ${c.service ? `<span class="external-service">${c.service}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderSideEffects(effects) {
+      if (!effects || effects.length === 0) return '';
+      
+      return `
+        <div class="side-effects">
+          <div class="section-title">Side Effects</div>
+          ${effects.map(e => `
+            <div class="side-effect">
+              <span class="side-effect-icon">${getSideEffectIcon(e.type)}</span>
+              <span>${e.description}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+    }
+
     function showFlow(flowId) {
       const data = window.__JOURNEY_MAP_DATA__;
       const flow = data.find(f => f.id === flowId);
@@ -289,7 +780,7 @@
       document.querySelectorAll('.flow-item').forEach(item => {
         item.classList.remove('active');
       });
-      document.querySelector(`[onclick="showFlow('${flowId}')"]`).classList.add('active');
+      document.querySelector(`[onclick="showFlow('${flowId}')"]`)?.classList.add('active');
 
       // Render flow content
       const content = document.getElementById('flow-content');
@@ -306,26 +797,38 @@
             <div class="step-number">${step.step}</div>
             <div class="step-header">
               <div class="step-endpoint">${step.endpoint}</div>
-              <div class="step-description">${step.description}</div>
+              ${step.authRequired ? 
+                `<div class="auth-badge required">🔒 ${step.authDetails || 'Auth Required'}</div>` : 
+                `<div class="auth-badge no-auth">🔓 Public</div>`
+              }
             </div>
+            
+            ${renderMiddlewareChain(step.middlewareChain)}
+            
+            <div class="params-grid">
+              ${renderPathParams(step.pathParams)}
+              ${renderQueryParams(step.queryParams)}
+            </div>
+            
+            ${renderRequestBody(step.requestBody)}
+            
+            ${renderResponses(step.responses)}
+            
+            ${renderServiceCalls(step.serviceCalls)}
+            
+            ${renderExternalCalls(step.externalCalls)}
+            
+            ${renderSideEffects(step.sideEffects)}
+            
             <div class="step-details">
               <div class="data-section">
-                <div class="data-label">Request Data</div>
-                <div class="data-content">${step.dataIn}</div>
+                <div class="data-label">Request Data (Inferred)</div>
+                <div class="data-content">${escapeHtml(step.dataIn)}</div>
               </div>
               <div class="data-section">
-                <div class="data-label">Response Data</div>
-                <div class="data-content">${step.dataOut}</div>
+                <div class="data-label">Response Data (Inferred)</div>
+                <div class="data-content">${escapeHtml(step.dataOut)}</div>
               </div>
-            </div>
-            <div class="outcomes">
-              ${step.outcomes.map(outcome => `
-                <div class="outcome ${outcome.type}">
-                  <span class="outcome-icon">${outcome.type === 'success' ? '✓' : '✗'}</span>
-                  <span class="outcome-text">${outcome.description}</span>
-                  <span class="outcome-next">→ ${outcome.next}</span>
-                </div>
-              `).join('')}
             </div>
           </div>
         `).join('')}

@@ -1,14 +1,19 @@
 {
   "name": "express-journey-mapper",
-  "version": "1.0.5",
-  "description": "Generate user journey documentation for Express.js applications",
+  "version": "1.0.6",
+  "description": "Generate user journey documentation for Express.js applications with deep code analysis, OpenAPI export, and service dependency mapping",
   "keywords": [
     "express",
     "documentation",
     "api",
     "journey",
     "flow",
-    "mapper"
+    "mapper",
+    "openapi",
+    "swagger",
+    "joi",
+    "zod",
+    "validation"
   ],
   "author": "Damola",
   "license": "MIT",

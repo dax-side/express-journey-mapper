@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import * as path from 'path';
 import { scanProject } from './scanner/projectScanner';
 import { scanRoutes } from './scanner/routeScanner';
-import { analyzeHandler } from './analyzer/handlerAnalyzer';
+import { analyzeHandler, setProjectRoot } from './analyzer/handlerAnalyzer';
 import { buildFlows } from './builder/flowBuilder';
 import { generateHtml, generateJson, generateMarkdown, generateOpenAPI } from './generator';
 
@@ -157,6 +157,10 @@ program
 
       // 3. Analyze handlers
       logger.section('Analyzing handlers...');
+      
+      // Set project root for package.json-based service detection
+      setProjectRoot(absolutePath);
+      
       const analyses = routes.map(route => {
         logger.debug(`Analyzing ${route.method} ${route.path}`);
         return analyzeHandler(route);

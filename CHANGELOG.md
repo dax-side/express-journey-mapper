@@ -2,6 +2,102 @@
 
 All notable changes to express-journey-mapper will be documented in this file.
 
+## [1.0.7] - 2025-12-08
+
+### Fixed - Critical Analysis Accuracy Improvements
+
+This release addresses 8 critical issues reported by users to eliminate false positives and improve detection accuracy.
+
+#### Issue #1: Scope Bleeding - FIXED
+- **Problem**: Analyzer was including ALL code in file scope (imports, middleware configs, utility functions)
+- **Fix**: New call graph analyzer only examines handler function body
+- **Result**: Health endpoints no longer show CORS config strings or payment services
+
+#### Issue #2: String Literal Pollution - FIXED
+- **Problem**: ALL string literals were being collected (error messages, config values)
+- **Fix**: Only extract data from actual CallExpression nodes
+- **Result**: No more false positives from string literals like "Blocked CORS request..."
+
+#### Issue #3: No Call Graph - FIXED
+- **Problem**: Imported but unused services were showing up in analysis
+- **Fix**: Track actual function calls via CallExpression, not import statements
+- **Result**: Paystack imported but not called in handler = no payment detection
+
+#### Issue #4: Middleware Flagged as External Calls - FIXED
+- **Problem**: `cors()`, `helmet()`, `authenticate()` were flagged as external operations
+- **Fix**: Comprehensive middleware whitelist (40+ patterns including express, auth, validation)
+- **Result**: Middleware is properly categorized, not flagged as external services
+
+#### Issue #5: Validation Schema Extraction - VERIFIED
+- Already implemented in v1.0.6 - confirmed working
+- Joi, Zod, express-validator schemas properly extracted
+
+#### Issue #6: No Confidence Scoring - IMPLEMENTED
+- **Problem**: False positives treated same as certain detections
+- **Fix**: All detections now have confidence scores (0.0-1.0)
+- **Filter**: Only detections with confidence >= 0.6 are included
+- **Result**: Low-confidence matches are filtered out
+
+#### Issue #7: Hardcoded Service Patterns - FIXED
+- **Problem**: Only detected hardcoded services (won't scale)
+- **Fix**: Parse package.json dependencies to build service registry dynamically
+- **Registry**: 40+ known packages (Stripe, Paystack, Flutterwave, Razorpay, SendGrid, Mailgun, S3, Cloudinary, Redis, etc.)
+- **Result**: Auto-detects services from installed npm packages
+
+#### Issue #8: Internal vs External HTTP Calls - FIXED
+- **Problem**: `fetch('/api/internal')` flagged same as external APIs
+- **Fix**: `isInternalUrl()` function filters:
+  - Relative URLs (`/api/...`)
+  - Localhost (`localhost`, `127.0.0.1`)
+  - Internal Docker/K8s service names
+- **Result**: Only truly external URLs are flagged
+
+### Technical Changes
+
+#### New Module: callGraphAnalyzer.ts (~600 lines)
+- `analyzeHandlerCalls()` - Analyzes only handler body
+- `getHandlerBody()` - Extracts function body from arrow/function expressions
+- `isMiddlewareCall()` - Detects and filters middleware patterns
+- `isInternalUrl()` - Distinguishes internal from external URLs
+- `buildServiceRegistry()` - Dynamically builds service list from package.json
+- `detectHttpCall()`, `detectDatabaseCall()`, `detectPaymentCall()`, etc.
+
+#### Updated: handlerAnalyzer.ts
+- Uses new call graph analyzer instead of text matching
+- `setProjectRoot()` for package.json detection
+- Confidence-based filtering for external calls and side effects
+- Converted `DetectedCall` to `ExternalCall` with filtering
+
+#### Updated Types
+- `ExternalCall.type` expanded: added 'sms', 'cache', 'unknown'
+- `SideEffect.type` expanded: added 'sms', 'analytics'
+
+### Before/After Example
+
+**Health Endpoint:**
+```javascript
+app.get('/health', cors(corsConfig), (req, res) => {
+  res.json({ status: 'ok' });
+});
+```
+
+**Before (v1.0.6):**
+```json
+{
+  "externalCalls": ["Blocked CORS request from origin: ${origin}"],
+  "paymentCalls": ["paystack.charge.create"]
+}
+```
+
+**After (v1.0.7):**
+```json
+{
+  "externalCalls": [],
+  "sideEffects": [],
+  "responses": [{ "statusCode": 200, "schema": "{ status: 'ok' }" }]
+}
+```
+
 ## [1.0.6] - 2025-12-08
 
 ### Added - Deep Code Analysis & OpenAPI Export

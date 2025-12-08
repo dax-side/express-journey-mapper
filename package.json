@@ -1,6 +1,6 @@
 {
   "name": "express-journey-mapper",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Generate user journey documentation for Express.js applications with deep code analysis, OpenAPI export, and service dependency mapping",
   "keywords": [
     "express",

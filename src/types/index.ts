@@ -106,14 +106,14 @@ export interface HandlerAnalysis {
 }
 
 export interface ExternalCall {
-  type: 'http' | 'database' | 'queue' | 'email' | 'payment' | 'storage';
+  type: 'http' | 'database' | 'queue' | 'email' | 'payment' | 'storage' | 'sms' | 'cache' | 'unknown';
   target: string;
   method?: string;
   service?: string;  // e.g., 'Stripe', 'SendGrid', 'S3'
 }
 
 export interface SideEffect {
-  type: 'email' | 'queue' | 'cache' | 'file' | 'socket' | 'webhook' | 'notification';
+  type: 'email' | 'queue' | 'cache' | 'file' | 'socket' | 'webhook' | 'notification' | 'sms' | 'analytics';
   description: string;
 }
 

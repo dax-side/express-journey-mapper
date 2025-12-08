@@ -8,8 +8,24 @@ import {
   findServiceCalls,
   clearSchemaCache
 } from './schemaExtractor';
+import {
+  analyzeHandlerCalls,
+  clearDependencyCache,
+  DetectedCall,
+  DetectedSideEffect
+} from './callGraphAnalyzer';
 import * as path from 'path';
 import * as fs from 'fs';
+
+/** Project root for package.json detection */
+let projectRoot: string | null = null;
+
+/**
+ * Sets the project root for package.json-based service detection
+ */
+export function setProjectRoot(root: string): void {
+  projectRoot = root;
+}
 
 const DEFAULT_STATUS_CODE = 200;
 const ERROR_THRESHOLD = 400;
@@ -21,6 +37,13 @@ let sharedProject: Project | null = null;
 /**
  * Analyzes an Express route handler to extract behavior information
  * including request/response patterns, external calls, and side effects
+ * 
+ * FIXED (v1.0.7): Now uses call graph analysis to:
+ * - Only analyze handler body, not entire file scope (Issue #1)
+ * - Track actual call expressions, not string literals (Issue #2)
+ * - Ignore middleware calls like cors, helmet (Issue #4)
+ * - Use package.json for service detection (Issue #7)
+ * - Distinguish internal vs external HTTP calls (Issue #8)
  */
 export function analyzeHandler(route: Route): HandlerAnalysis {
   try {
@@ -71,9 +94,18 @@ export function analyzeHandler(route: Route): HandlerAnalysis {
     // Extract all response information
     const responses = extractResponses(handler);
     
+    // Use new call graph analyzer for proper scope-limited analysis
+    // This fixes Issues #1, #2, #3, #4, #7, #8
+    const root = projectRoot || path.dirname(route.handlerFile);
+    const { calls: detectedCalls, sideEffects: detectedSideEffects } = analyzeHandlerCalls(handler, root);
+    
+    // Convert detected calls to ExternalCall format
+    const externalCalls = convertDetectedCalls(detectedCalls);
+    const sideEffects = convertDetectedSideEffects(detectedSideEffects);
+    
     const analysis: HandlerAnalysis = {
       endpoint: `${route.method} ${route.path}`,
-      description: generateDescription(route, handler),
+      description: generateDescription(route, handler, externalCalls, sideEffects),
       
       // New enhanced fields
       pathParams,
@@ -85,9 +117,9 @@ export function analyzeHandler(route: Route): HandlerAnalysis {
       authDetails: authMiddleware?.details,
       serviceCalls,
       
-      // External dependencies
-      externalCalls: findExternalCalls(handler),
-      sideEffects: findSideEffects(handler),
+      // External dependencies - now using call graph analysis
+      externalCalls,
+      sideEffects,
       
       // Legacy compat
       dataIn: extractRequestShape(handler),
@@ -103,12 +135,41 @@ export function analyzeHandler(route: Route): HandlerAnalysis {
 }
 
 /**
+ * Converts DetectedCall array to ExternalCall array
+ */
+function convertDetectedCalls(detectedCalls: DetectedCall[]): ExternalCall[] {
+  return detectedCalls
+    .filter(call => !call.isInternal) // Filter out internal calls (Issue #8)
+    .filter(call => call.confidence >= 0.6) // Filter low confidence (Issue #6)
+    .map(call => ({
+      type: call.type,
+      target: call.target,
+      method: call.method,
+      service: call.service
+    }));
+}
+
+/**
+ * Converts DetectedSideEffect array to SideEffect array
+ */
+function convertDetectedSideEffects(detectedEffects: DetectedSideEffect[]): SideEffect[] {
+  return detectedEffects
+    .filter(effect => effect.confidence >= 0.6) // Filter low confidence
+    .map(effect => ({
+      type: effect.type,
+      description: effect.description
+    }));
+}
+
+/**
  * Clears the analyzer cache (call between scans)
  */
 export function clearAnalyzerCache(): void {
   sourceFileCache.clear();
   clearSchemaCache();
+  clearDependencyCache();
   sharedProject = null;
+  projectRoot = null;
 }
 
 /**
@@ -465,20 +526,26 @@ function getStatusDescription(statusCode: number): string {
 
 /**
  * Generates a descriptive summary of the handler's behavior
+ * Now accepts pre-computed calls and side effects to avoid re-computing
  */
-function generateDescription(route: Route, handler: Node): string {
+function generateDescription(
+  route: Route, 
+  handler: Node,
+  externalCalls?: ExternalCall[],
+  sideEffects?: SideEffect[]
+): string {
   const parts: string[] = [];
   parts.push(`${route.method} ${route.path}`);
   
-  const externalCalls = findExternalCalls(handler);
-  if (externalCalls.length > 0) {
-    const targets = externalCalls.slice(0, 2).map(c => `${c.type}: ${c.target}`);
+  const calls = externalCalls || [];
+  if (calls.length > 0) {
+    const targets = calls.slice(0, 2).map(c => `${c.type}: ${c.target}`);
     parts.push(`Calls [${targets.join(', ')}]`);
   }
   
-  const sideEffects = findSideEffects(handler);
-  if (sideEffects.length > 0) {
-    parts.push(`Side effects [${sideEffects.slice(0, 2).map(e => e.type).join(', ')}]`);
+  const effects = sideEffects || [];
+  if (effects.length > 0) {
+    parts.push(`Side effects [${effects.slice(0, 2).map(e => e.type).join(', ')}]`);
   }
   
   return parts.join(' - ');
